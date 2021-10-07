@@ -3,13 +3,13 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"time"
 	"zpl/db"
 	"zpl/models"
 
-	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -58,7 +58,7 @@ func GetById(id string) (models.Player, error) {
 	var player models.Player
 	cursor, err := playerCollection.Find(
 		context.Background(),
-		bson.D{{"id", id}},
+		bson.D{{"ID", id}},
 	)
 	if err != nil {
 		log.Println("Corresponding player not found")
@@ -71,13 +71,42 @@ func GetById(id string) (models.Player, error) {
 func GetPutPlayer(rw http.ResponseWriter, r *http.Request) {
 	log.Println("Request Recieved")
 	if r.Method == http.MethodGet {
-		vars := mux.Vars(r)
-		id := vars["id"]
-		if err != nil {
-			log.Fatal(err)
-		}
+		id := r.URL.Query().Get("playerId")
 		player, err := GetById(id)
+		if err != nil {
+			rw.Write([]byte("Player Not Found"))
+			rw.WriteHeader(http.StatusNoContent)
+		}
 		respByte, _ := json.Marshal(player)
+		rw.Header().Add("Content-Type", "application/json")
+		rw.Write(respByte)
+		rw.WriteHeader(http.StatusOK)
+	} else if r.Method == http.MethodPut {
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			log.Println("400 Error")
+		}
+		var player models.Player
+		err = json.Unmarshal(body, &player)
+		if err != nil {
+			log.Println("400 Error")
+		}
+		result, err := playerCollection.InsertOne(
+			context.Background(),
+			bson.D{
+				{"ID", player.ID},
+				{"Name", player.Name},
+				{"Age", player.Age},
+				{"Role", player.Role},
+				{"Country", player.Country},
+				{"BattingStyle", player.BattingStyle},
+				{"BowlingStyle", player.BowlingStyle},
+			})
+		if err != nil {
+			log.Println("500 Error")
+		}
+		resp := "Success"
+		respByte, _ := json.Marshal(resp)
 		rw.Header().Add("Content-Type", "application/json")
 		rw.Write(respByte)
 		rw.WriteHeader(http.StatusOK)

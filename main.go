@@ -6,5 +6,6 @@ import (
 )
 
 func main() {
-	http.HandleFunc("players/{playerId}", handlers.GetPlayers)
+	http.HandleFunc("players", handlers.GetPostPlayers)
+	//http.HandleFunc("players/{playerId}", handlers.GetPutPlayer)
 }

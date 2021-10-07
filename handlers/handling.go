@@ -31,11 +31,15 @@ func GetPostPlayers(rw http.ResponseWriter, r *http.Request) {
 		defer cancel()
 		var players []models.Player
 		cursor, err := playerCollection.Find(ctx, bson.D{})
-		//if err!=nil{400}
+		if err != nil {
+			log.Println("400 Error")
+		}
 		for cursor.Next(ctx) {
 			var player models.Player
 			err = cursor.Decode(player)
-			//if err != nil 500
+			if err != nil {
+				log.Println("500 Error")
+			}
 			players = append(players, player)
 		}
 		respByte, _ := json.Marshal(players)
@@ -51,10 +55,16 @@ func GetPostPlayers(rw http.ResponseWriter, r *http.Request) {
 }
 
 func GetById(id string) (models.Player, error) {
-	playr, err := playerCollection.Find(bson.ObjectIdHex(id))
-	//if err
 	var player models.Player
-	playr.Decode(&player)
+	cursor, err := playerCollection.Find(
+		context.Background(),
+		bson.D{{"id", id}},
+	)
+	if err != nil {
+		log.Println("Corresponding player not found")
+		return player, err
+	}
+	cursor.Decode(&player)
 	return player, nil
 }
 

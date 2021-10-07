@@ -70,6 +70,7 @@ func GetPostPlayers(rw http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Println("500 Error")
 		}
+		log.Println(result.InsertedID)
 		resp := "Success"
 		respByte, _ := json.Marshal(resp)
 		rw.Header().Add("Content-Type", "application/json")
@@ -133,6 +134,7 @@ func GetPutPlayer(rw http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Println("500 Error")
 		}
+		log.Println(result.InsertedID)
 		resp := "Success"
 		respByte, _ := json.Marshal(resp)
 		rw.Header().Add("Content-Type", "application/json")
@@ -187,6 +189,7 @@ func GetPostTeams(rw http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Println("500 Error")
 		}
+		log.Println(result.InsertedID)
 		resp := "Success"
 		respByte, _ := json.Marshal(resp)
 		rw.Header().Add("Content-Type", "application/json")
@@ -247,6 +250,7 @@ func GetPutTeam(rw http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Println("500 Error")
 		}
+		log.Println(result.InsertedID)
 		resp := "Success"
 		respByte, _ := json.Marshal(resp)
 		rw.Header().Add("Content-Type", "application/json")

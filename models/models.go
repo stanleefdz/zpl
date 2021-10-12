@@ -1,24 +1,23 @@
 package models
 
 type Player struct {
-	ID           int32  `bson:"id"`
+	ID           int64  `bson:"_id"`
 	Name         string `bson:"name"`
 	Age          int32  `bson:"age"`
 	Role         string `bson:"role"`
 	Country      string `bson:"country"`
-	BattingStyle string `bson:"battingstyle"`
-	BowlingStyle string `bson:"bowlingstyle"`
+	BattingStyle string `bson:"batting_style"`
+	BowlingStyle string `bson:"bowling_style"`
 }
 
 type Team struct {
-	ID         int32  `bson:"id"`
+	ID         int32  `bson:"_id"`
 	Name       string `bson:"name"`
 	Owner      string `bson:"owner"`
 	HomeGround string `bson:"homeground"`
 }
 
 type ErrorMessage struct {
-	Description string `bson:"description"`
-	Message     string `bson:"message"`
-	StatusCode  string `bson:"statuscode"`
+	Description string `json:"description"`
+	Message     string `json:"message"`
 }

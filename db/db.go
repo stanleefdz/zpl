@@ -20,5 +20,6 @@ func ConnectionHandler() *mongo.Client {
 		log.Fatal(err)
 	}
 	defer abc()
+	log.Println("Connected to mongoDB")
 	return client
 }

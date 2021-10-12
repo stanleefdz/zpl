@@ -21,3 +21,8 @@ type ErrorMessage struct {
 	Description string `json:"description"`
 	Message     string `json:"message"`
 }
+
+type SuccessMessage struct {
+	Status  string `json:"status"`
+	Message string `json:"message"`
+}

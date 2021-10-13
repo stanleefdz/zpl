@@ -65,6 +65,20 @@ func GetPlayerById(id int64) (*models.Player, error) {
 	return player, nil
 }
 
+func GetTeamById(id int64) (*models.Team, error) {
+	var team *models.Team
+	res := teamCollection.FindOne(
+		context.Background(),
+		bson.D{{"_id", id}},
+	)
+	if res.Err() != nil {
+		log.Println("Corresponding player not found")
+		return nil, res.Err()
+	}
+	res.Decode(&team)
+	return team, nil
+}
+
 func GetPostPlayers(rw http.ResponseWriter, r *http.Request) {
 	log.Println("Request Recieved")
 	if r.Method == http.MethodGet {
@@ -91,7 +105,7 @@ func GetPostPlayers(rw http.ResponseWriter, r *http.Request) {
 			return
 		}
 		respByte, _ := json.Marshal(players)
-		writeResponse(rw, 200, respByte)
+		writeResponse(rw, http.StatusOK, respByte)
 	} else if r.Method == http.MethodPost {
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
@@ -129,11 +143,9 @@ func GetPostPlayers(rw http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Println(result.InsertedID)
-		writeResponse(rw, 200, handleSuccess())
+		writeResponse(rw, http.StatusOK, handleSuccess())
 	} else {
-		rw.Header().Add("Content-Type", "application/json")
-		rw.WriteHeader(http.StatusMethodNotAllowed)
-		rw.Write(handleError(fmt.Errorf("Method Not Allowed")))
+		writeResponse(rw, http.StatusMethodNotAllowed, handleError(fmt.Errorf("Method Not Allowed")))
 	}
 }
 
@@ -145,12 +157,12 @@ func GetPutPlayer(rw http.ResponseWriter, r *http.Request) {
 		id, _ := strconv.ParseInt(ids, 10, 64)
 		player, err := GetPlayerById(id)
 		if err != nil {
-			log.Printf("Players not found in db")
-			writeResponse(rw, http.StatusBadRequest, handleError(fmt.Errorf("Players not found")))
+			log.Printf("Player not found in db")
+			writeResponse(rw, http.StatusBadRequest, handleError(fmt.Errorf("Player not found")))
 			return
 		}
 		respByte, _ := json.Marshal(player)
-		writeResponse(rw, 200, respByte)
+		writeResponse(rw, http.StatusOK, respByte)
 	} else if r.Method == http.MethodPut {
 		log.Println(r.URL.Path)
 		ids := strings.TrimPrefix(r.URL.Path, "/players/")
@@ -187,11 +199,9 @@ func GetPutPlayer(rw http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Println(result.UpsertedID)
-		writeResponse(rw, 200, handleSuccess())
+		writeResponse(rw, http.StatusOK, handleSuccess())
 	} else {
-		rw.Write([]byte("Method Not Allowed"))
-		rw.WriteHeader(http.StatusMethodNotAllowed)
-		rw.Write(handleError(fmt.Errorf("Method Not Allowed")))
+		writeResponse(rw, http.StatusMethodNotAllowed, handleError(fmt.Errorf("Method Not Allowed")))
 	}
 }
 
@@ -203,110 +213,114 @@ func GetPostTeams(rw http.ResponseWriter, r *http.Request) {
 		var teams []models.Team
 		cursor, err := teamCollection.Find(ctx, bson.D{})
 		if err != nil {
-			log.Println("400 Error")
+			log.Printf("Error while fetching teams from db, Error is: %s", err.Error())
+			writeResponse(rw, http.StatusInternalServerError, handleError(err))
+			return
 		}
 		for cursor.Next(ctx) {
 			var team models.Team
-			err = cursor.Decode(team)
+			err = cursor.Decode(&team)
 			if err != nil {
-				log.Println("500 Error")
+				log.Println(err)
 			}
 			teams = append(teams, team)
 		}
+		if len(teams) == 0 {
+			log.Printf("Teams not found in db")
+			writeResponse(rw, http.StatusBadRequest, handleError(fmt.Errorf("Teams not found")))
+			return
+		}
 		respByte, _ := json.Marshal(teams)
-		rw.Header().Add("Content-Type", "application/json")
-		rw.Write(respByte)
-		rw.WriteHeader(http.StatusOK)
+		writeResponse(rw, http.StatusOK, respByte)
 	} else if r.Method == http.MethodPost {
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
-			log.Println("400 Error")
+			log.Printf("Error while fetching body, Error is: %s", err.Error())
+			writeResponse(rw, http.StatusInternalServerError, handleError(err))
+			return
 		}
 		var team models.Team
 		err = json.Unmarshal(body, &team)
 		if err != nil {
-			log.Println("400 Error")
+			log.Printf("Error while unmarshaling body, Error is: %s", err.Error())
+			writeResponse(rw, http.StatusInternalServerError, handleError(err))
+			return
+		}
+		t, _ := GetTeamById(team.ID)
+		if t != nil {
+			log.Printf("Already exists collection with team Id")
+			writeResponse(rw, http.StatusInternalServerError, handleError(fmt.Errorf("Player already exists")))
+			return
 		}
 		result, err := teamCollection.InsertOne(
 			context.Background(),
 			bson.D{
-				{"ID", team.ID},
-				{"Name", team.Name},
-				{"Owner", team.Owner},
-				{"HomeGround", team.HomeGround},
+				{"_id", team.ID},
+				{"name", team.Name},
+				{"qwner", team.Owner},
+				{"homeground", team.HomeGround},
 			})
 		if err != nil {
-			log.Println("500 Error")
+			log.Printf("Error while inserting collection to db")
+			writeResponse(rw, http.StatusBadRequest, handleError(fmt.Errorf("Unable to insert collection to db")))
+			return
 		}
 		log.Println(result.InsertedID)
-		resp := "Success"
-		respByte, _ := json.Marshal(resp)
-		rw.Header().Add("Content-Type", "application/json")
-		rw.Write(respByte)
-		rw.WriteHeader(http.StatusOK)
+		writeResponse(rw, http.StatusOK, handleSuccess())
 	} else {
-		rw.Write([]byte("Method Not Allowed"))
-		rw.WriteHeader(http.StatusMethodNotAllowed)
+		writeResponse(rw, http.StatusMethodNotAllowed, handleError(fmt.Errorf("Method Not Allowed")))
 	}
-}
-
-func GetTeamById(id string) (models.Team, error) {
-	var team models.Team
-	cursor, err := teamCollection.Find(
-		context.Background(),
-		bson.D{{"ID", id}},
-	)
-	if err != nil {
-		log.Println("Corresponding player not found")
-		return team, err
-	}
-	cursor.Decode(&team)
-	return team, nil
 }
 
 func GetPutTeam(rw http.ResponseWriter, r *http.Request) {
 	log.Println("Request Recieved")
 	if r.Method == http.MethodGet {
-		id := r.URL.Query().Get("teamId")
+		log.Println(r.URL.Path)
+		ids := strings.TrimPrefix(r.URL.Path, "/teams/")
+		id, _ := strconv.ParseInt(ids, 10, 64)
 		team, err := GetTeamById(id)
 		if err != nil {
-			rw.Write([]byte("Team Not Found"))
-			rw.WriteHeader(http.StatusNoContent)
+			log.Printf("Team not found in db")
+			writeResponse(rw, http.StatusBadRequest, handleError(fmt.Errorf("Team not found")))
+			return
 		}
 		respByte, _ := json.Marshal(team)
-		rw.Header().Add("Content-Type", "application/json")
-		rw.Write(respByte)
-		rw.WriteHeader(http.StatusOK)
+		writeResponse(rw, http.StatusOK, respByte)
 	} else if r.Method == http.MethodPut {
-		id := r.URL.Query().Get("teamId")
+		log.Println(r.URL.Path)
+		ids := strings.TrimPrefix(r.URL.Path, "/teams/")
+		id, _ := strconv.ParseInt(ids, 10, 64)
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
-			log.Println("400 Error")
+			log.Printf("Error while fetching body, Error is: %s", err.Error())
+			writeResponse(rw, http.StatusInternalServerError, handleError(err))
+			return
 		}
 		var team models.Team
 		err = json.Unmarshal(body, &team)
 		if err != nil {
-			log.Println("400 Error")
+			log.Printf("Error while unmarshaling body, Error is: %s", err.Error())
+			writeResponse(rw, http.StatusInternalServerError, handleError(err))
+			return
 		}
-		result, err := playerCollection.InsertOne(
+		result, err := playerCollection.UpdateOne(
 			context.Background(),
+			bson.M{"_id": id},
 			bson.D{
-				{"ID", id},
-				{"Name", team.Name},
-				{"Owner", team.Owner},
-				{"HomeGround", team.HomeGround},
-			})
+				{"$set", bson.D{
+					{"name", team.Name},
+					{"owner", team.Owner},
+					{"homeground", team.HomeGround},
+				}}},
+		)
 		if err != nil {
-			log.Println("500 Error")
+			log.Printf("Error while updating collection")
+			writeResponse(rw, http.StatusBadRequest, handleError(err))
+			return
 		}
-		log.Println(result.InsertedID)
-		resp := "Success"
-		respByte, _ := json.Marshal(resp)
-		rw.Header().Add("Content-Type", "application/json")
-		rw.Write(respByte)
-		rw.WriteHeader(http.StatusOK)
+		log.Println(result.UpsertedID)
+		writeResponse(rw, http.StatusOK, handleSuccess())
 	} else {
-		rw.Write([]byte("Method Not Allowed"))
-		rw.WriteHeader(http.StatusMethodNotAllowed)
+		writeResponse(rw, http.StatusMethodNotAllowed, handleError(fmt.Errorf("Method Not Allowed")))
 	}
 }

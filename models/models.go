@@ -11,7 +11,7 @@ type Player struct {
 }
 
 type Team struct {
-	ID         int32  `bson:"_id"`
+	ID         int64  `bson:"_id"`
 	Name       string `bson:"name"`
 	Owner      string `bson:"owner"`
 	HomeGround string `bson:"homeground"`

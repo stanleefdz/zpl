@@ -257,7 +257,7 @@ func GetPostTeams(rw http.ResponseWriter, r *http.Request) {
 			bson.D{
 				{"_id", team.ID},
 				{"name", team.Name},
-				{"qwner", team.Owner},
+				{"owner", team.Owner},
 				{"homeground", team.HomeGround},
 			})
 		if err != nil {
@@ -303,7 +303,7 @@ func GetPutTeam(rw http.ResponseWriter, r *http.Request) {
 			writeResponse(rw, http.StatusInternalServerError, handleError(err))
 			return
 		}
-		result, err := playerCollection.UpdateOne(
+		result, err := teamCollection.UpdateOne(
 			context.Background(),
 			bson.M{"_id": id},
 			bson.D{
